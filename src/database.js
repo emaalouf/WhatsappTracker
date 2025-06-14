@@ -12,28 +12,75 @@ const dbConfig = {
   port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  connectTimeout: 10000, // 10 second timeout
+  // Retry connection on error
+  maxRetries: 3,
+  retryDelay: 3000
 };
 
-// Create connection pool
-const pool = mysql.createPool(dbConfig);
+let pool = null;
 
-// Initialize database tables
-async function initDatabase() {
+// Helper function to check MySQL connection
+async function checkMySQLConnection() {
   try {
-    // Create database if it doesn't exist
-    const tempPool = mysql.createPool({
+    const tempConfig = {
       host: dbConfig.host,
       user: dbConfig.user,
       password: dbConfig.password,
       port: dbConfig.port,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
+      connectTimeout: 5000
+    };
     
-    await tempPool.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
-    await tempPool.end();
+    // Try to create a connection to check if MySQL is available
+    const tempConn = await mysql.createConnection(tempConfig);
+    await tempConn.end();
+    return true;
+  } catch (error) {
+    console.error(`MySQL connection check failed: ${error.message || error}`);
+    return false;
+  }
+}
+
+// Initialize database connection
+async function initializeConnection() {
+  // Check if MySQL is available
+  const mysqlAvailable = await checkMySQLConnection();
+  
+  if (!mysqlAvailable) {
+    throw new Error('Cannot connect to MySQL. Please check that MySQL is running and credentials are correct in .env file.');
+  }
+  
+  try {
+    // Create connection pool
+    pool = mysql.createPool(dbConfig);
+    
+    // Test the connection
+    const connection = await pool.getConnection();
+    connection.release();
+    
+    console.log('Successfully connected to MySQL server.');
+    return true;
+  } catch (error) {
+    console.error(`Failed to create connection pool: ${error.message || error}`);
+    throw error;
+  }
+}
+
+// Initialize database tables
+async function initDatabase() {
+  try {
+    // Initialize connection first
+    await initializeConnection();
+    
+    // Create database if it doesn't exist
+    try {
+      await pool.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
+      console.log(`Database '${dbConfig.database}' checked/created.`);
+    } catch (error) {
+      console.error(`Error creating database: ${error.message}`);
+      throw error;
+    }
     
     // Create tables
     const conn = await pool.getConnection();
@@ -54,6 +101,7 @@ async function initDatabase() {
         INDEX idx_timestamp (timestamp)
       )
     `);
+    console.log('Messages table checked/created.');
 
     // Contacts table
     await conn.query(`
@@ -68,6 +116,7 @@ async function initDatabase() {
         INDEX idx_number (number)
       )
     `);
+    console.log('Contacts table checked/created.');
     
     // Media table with file paths
     await conn.query(`
@@ -81,6 +130,7 @@ async function initDatabase() {
         FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
       )
     `);
+    console.log('Media table checked/created.');
     
     conn.release();
     console.log('Database initialized successfully');
@@ -94,6 +144,8 @@ async function initDatabase() {
 // Save message to database
 async function saveMessage(message) {
   try {
+    if (!pool) await initializeConnection();
+    
     const {
       id,
       body = '',
@@ -130,6 +182,8 @@ async function saveMessage(message) {
 // Save contact to database
 async function saveContact(contact) {
   try {
+    if (!pool) await initializeConnection();
+    
     const {
       id,
       name = '',
@@ -160,6 +214,8 @@ async function saveContact(contact) {
 // Save media metadata and file path
 async function saveMedia(messageId, media, filePath) {
   try {
+    if (!pool) await initializeConnection();
+    
     const {
       mimetype = '',
       filename = '',
@@ -189,6 +245,8 @@ async function saveMedia(messageId, media, filePath) {
 // Get messages by chat ID
 async function getMessagesByChatId(chatId, limit = 50) {
   try {
+    if (!pool) await initializeConnection();
+    
     const [rows] = await pool.query(
       `SELECT * FROM messages 
        WHERE chatId = ? 
@@ -207,6 +265,8 @@ async function getMessagesByChatId(chatId, limit = 50) {
 // Get all contacts
 async function getAllContacts() {
   try {
+    if (!pool) await initializeConnection();
+    
     const [rows] = await pool.query(
       `SELECT * FROM contacts 
        ORDER BY lastUpdated DESC`
@@ -222,6 +282,8 @@ async function getAllContacts() {
 // Get media for a message
 async function getMediaByMessageId(messageId) {
   try {
+    if (!pool) await initializeConnection();
+    
     const [rows] = await pool.query(
       `SELECT * FROM media 
        WHERE messageId = ?`,
