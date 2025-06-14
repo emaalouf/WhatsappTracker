@@ -13,6 +13,7 @@
     "history": "node src/index.js history",
     "media": "node src/index.js media",
     "export-media": "node src/index.js export-media",
+    "qr": "node src/qr-printer.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop whatsapp-tracker",
     "pm2:restart": "pm2 restart whatsapp-tracker",

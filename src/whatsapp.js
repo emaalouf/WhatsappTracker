@@ -80,8 +80,13 @@ class WhatsAppClient {
       this.qrCode = qr;
       this.lastQR = new Date().getTime();
       
-      console.log('Scan the QR code below to log in:');
-      qrcode.generate(qr, { small: true });
+      console.log('\n============= WhatsApp QR Code =============');
+      // Generate QR with larger size for better visibility
+      qrcode.generate(qr, { small: false });
+      console.log('===========================================');
+      console.log('Scan this QR code with your WhatsApp mobile app');
+      console.log('Go to WhatsApp > Settings > Linked Devices > Link a Device');
+      console.log('===========================================\n');
       
       // Also save QR code to file for PM2 headless mode
       const qrFilePath = path.join(process.cwd(), 'whatsapp_qr.txt');
@@ -89,10 +94,12 @@ class WhatsAppClient {
         `QR Code generated at ${new Date().toLocaleString()}\n` +
         `Scan this QR code with your phone's WhatsApp app to authenticate.\n\n` +
         `${qr}\n\n` +
-        `If your terminal supports it, the QR should also be visible in the PM2 logs.\n` +
-        `Run: pm2 logs whatsapp-tracker`
+        `If you can't see the QR code in the terminal, run:\n` +
+        `npm run qr\n\n` +
+        `This will display a nicely formatted QR code in your terminal.`
       );
       console.log(`QR code also saved to ${qrFilePath}`);
+      console.log(`If you can't see the QR code clearly, run: npm run qr`);
     });
 
     // Authentication successful
