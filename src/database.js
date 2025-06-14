@@ -13,10 +13,8 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  connectTimeout: 10000, // 10 second timeout
-  // Retry connection on error
-  maxRetries: 3,
-  retryDelay: 3000
+  connectTimeout: 10000 // 10 second timeout
+  // Removed unsupported options
 };
 
 let pool = null;

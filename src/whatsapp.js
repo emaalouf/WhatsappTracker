@@ -29,26 +29,48 @@ class WhatsAppClient {
     // Get boolean for headless mode
     const isHeadless = process.env.HEADLESS !== 'false';
 
-    // Initialize WhatsApp client with local authentication
-    this.client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: sessionPath
-      }),
-      puppeteer: {
-        headless: isHeadless,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      }
-    });
+    // Add extra options for Docker/Containerized environments
+    const puppeteerOptions = {
+      headless: isHeadless,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process'
+      ]
+    };
 
-    this.setupEventListeners();
+    // Check if running in a container or minimal environment
+    if (process.env.CONTAINER_ENV === 'true' || process.env.MINIMAL_ENV === 'true') {
+      console.log('Running in container/minimal environment - applying additional compatibility options');
+      puppeteerOptions.executablePath = process.env.CHROME_PATH || null;
+      puppeteerOptions.args.push(
+        '--single-process',
+        '--disable-extensions',
+        '--disable-sync',
+        '--disable-translate'
+      );
+    }
+
+    // Initialize WhatsApp client with local authentication
+    try {
+      this.client = new Client({
+        authStrategy: new LocalAuth({
+          dataPath: sessionPath
+        }),
+        puppeteer: puppeteerOptions
+      });
+      
+      this.setupEventListeners();
+    } catch (error) {
+      console.error('Error initializing WhatsApp client:', error);
+      this.client = null;
+    }
   }
 
   // Setup WhatsApp client event listeners
@@ -293,8 +315,14 @@ class WhatsAppClient {
   // Destroy client
   async destroy() {
     try {
-      await this.client.destroy();
-      console.log('Client destroyed successfully');
+      if (this.client) {
+        try {
+          await this.client.destroy();
+          console.log('Client destroyed successfully');
+        } catch (destroyError) {
+          console.error('Error during client destroy:', destroyError.message);
+        }
+      }
       return true;
     } catch (error) {
       console.error('Error destroying client:', error);
