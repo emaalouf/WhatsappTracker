@@ -1,0 +1,42 @@
+{
+  "name": "whatsapptracker",
+  "version": "1.0.0",
+  "description": "Terminal-based WhatsApp tracker that stores message data in a MySQL database",
+  "main": "src/index.js",
+  "bin": {
+    "whatsapp-tracker": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js start",
+    "list": "node src/index.js list-contacts",
+    "history": "node src/index.js history",
+    "media": "node src/index.js media",
+    "export-media": "node src/index.js export-media",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop whatsapp-tracker",
+    "pm2:restart": "pm2 restart whatsapp-tracker",
+    "pm2:status": "pm2 status whatsapp-tracker",
+    "pm2:logs": "pm2 logs whatsapp-tracker",
+    "pm2:startup": "pm2 startup && pm2 save",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "whatsapp",
+    "tracker",
+    "cli",
+    "terminal",
+    "database",
+    "mysql",
+    "media"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "mysql2": "^3.6.1",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.23.0"
+  }
+}
